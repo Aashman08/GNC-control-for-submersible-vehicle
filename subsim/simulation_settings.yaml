@@ -1,0 +1,71 @@
+sim:
+  dt: 0.01                  # Simulation timestep (s)
+  seed: 42                  # RNG seed for reproducibility
+  save_dir: runs            # Directory (under CWD) to save plots
+  current_step: 0.0         # External vertical acceleration disturbance (m/s^2)
+  current_yaw_disturb: 0.0  # External yaw acceleration disturbance (rad/s^2)
+  depth_sp_rate: 0.4        # Max rate to change depth setpoint (m/s) for smooth transitions
+  approach_radius_depth: 8.0 # Distance (m) before a waypoint to begin changing depth
+  # Waypoint / XY guidance knobs
+  pitch_sp_rate: 0.15       # Max rate for pitch setpoint (rad/s)
+  los_lookahead_m: 6.0      # Lookahead distance for LOS path following (m)
+  arrive_radius_xy: 2.5     # Distance to accept waypoint arrival (m)
+
+submarine:                   # Submarine dynamics parameters
+  speed_tau: 1.2             # Speed time constant τ (s): ~63% to target in τ, ~95% in 3τ. Smaller = snappier accel
+  speed_max: 5.5             # Hard cap on forward speed (m/s) ~10.7 kn ceiling
+  thrust_to_speed: 5.14      # Gain mapping uT∈[0,1] -> steady-state speed v_ss (m/s). uT=1→~5.14 m/s (pre-cap)
+  yaw_accel_per_rudder: 0.8  # Yaw authority at 1 m/s: yaw_accel ≈ gain * rudder_cmd * speed (rad/s^2)
+  yaw_damp: 1.4              # Damping on yaw rate r (1/s): resists spin; higher = more stable, less overshoot
+  pitch_accel_per_stern: 0.8 # Pitch authority at 1 m/s: pitch_accel ≈ gain * stern_cmd * speed (rad/s^2)
+  pitch_damp: 1.4            # Damping on pitch rate q (1/s): reduces bobbing/overshoot; higher = smoother
+  buoy_k: 0.1                # Spring-like vertical restoring toward z=0 (1/s^2). Larger pulls depth back faster
+  depth_coupling_pitch: 3.0  # Vertical accel from pitch: tilt causes up/down accel (m/s^2 per rad)
+  heave_accel_per_cmd: 1.5   # Vertical acceleration per unit heave command (m/s^2)
+  heave_damp: 1.2            # Linear damping on vertical speed (1/s), reduces bobbing
+
+sensors:                     # Sensor noise and dropout model
+  imu_gyro_noise: 0.01       # Gyro z noise std (rad/s)
+  imu_accel_noise: 0.02      # Accel-based pitch measurement noise std (rad)
+  mag_noise: 0.01            # Magnetometer yaw noise std (rad)
+  pressure_noise: 0.05       # Depth sensor noise std (m)
+  dropout_prob: 0.0          # Probability per read to drop measurements
+
+pid:                         # Controller gains and limits
+  yaw:                       # Yaw rate/angle controller -> rudder command
+    kp: 1.4                  # Proportional gain (error multiplier): larger reacts faster; too high overshoots
+    ki: 0.3                  # Integral gain (removes bias/steady-state error); too high can wind up/oscillate
+    kd: 0.15                 # Derivative gain (damping on error change); smooths response, filters with d_cutoff_hz
+    i_min: -0.4              # Integral clamp min
+    i_max: 0.4               # Integral clamp max
+    out_min: -0.7            # Output saturation min (rudder cmd)
+    out_max: 0.7             # Output saturation max (rudder cmd)
+    d_cutoff_hz: 5.0         # Derivative low-pass cutoff (Hz)
+  pitch:                     # Pitch controller -> stern plane command
+    kp: 2.2                  # Proportional gain (error multiplier)
+    ki: 0.4                  # Integral gain (bias removal)
+    kd: 0.15                 # Derivative gain (damping)
+    i_min: -0.4
+    i_max: 0.4
+    out_min: -0.5            # Output saturation min (stern cmd)
+    out_max: 0.5             # Output saturation max (stern cmd)
+    d_cutoff_hz: 5.0
+  depth_outer:               # Outer-loop depth controller -> pitch setpoint
+    kp: 0.8                  # Proportional gain: how strongly depth error becomes pitch target
+    ki: 0.25                 # Integral gain: cleans up steady-state depth bias
+    kd: 0.08                 # Derivative gain: damps rapid depth corrections
+    i_min: -0.25
+    i_max: 0.25
+    out_min: -0.5            # Pitch setpoint min (rad)
+    out_max: 0.5             # Pitch setpoint max (rad)
+    d_cutoff_hz: 2.0
+
+limits:                      # Actuator rate limits (command units per second)
+  rudder_rate: 1.0           # Max change per second in rudder command (slew rate)
+  stern_rate: 1.0            # Max change per second in stern command
+  thrust_rate: 1.0           # Max change per second in thrust command
+
+setpoints:                   # Desired operating point for the demo
+  depth_m: 10.0              # Depth (m, positive down)
+  heading_deg: 90.0          # Heading (deg)
+  speed_mps: 5.0             # Forward speed (m/s) ~9.7 kn cruise

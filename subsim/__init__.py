@@ -1,0 +1,1 @@
+"""Beginner-friendly submersible simulator package."""

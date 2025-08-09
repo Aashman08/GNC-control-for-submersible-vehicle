@@ -1,0 +1,11 @@
+runs/
+__pycache__/
+.DS_Store
+.venv/
+*.zip
+!subsim.zip
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints
