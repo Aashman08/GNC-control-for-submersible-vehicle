@@ -91,7 +91,8 @@ def main() -> None:
     # Setpoints
     depth_sp = cfg["setpoints"]["depth_m"]
     depth_sp_cmd = depth_sp  # smoothed/rate-limited setpoint actually fed to controller
-    yaw_sp = np.deg2rad(cfg["setpoints"]["heading_deg"])
+    # Default: hold current yaw unless a scenario changes it (events/waypoints)
+    yaw_sp = getattr(plant, "yaw", 0.0)
     speed_sp = cfg["setpoints"]["speed_mps"]
 
     # Waypoint follower (if scenario defines waypoints)
@@ -137,8 +138,8 @@ def main() -> None:
     steps = int(T / dt)
     # Heave PI persistent state
     heave_i = 0.0
-    # Pitch setpoint rate limiter state
-    last_pitch_sp = 0.0
+    # Pitch setpoint rate limiter state (start by holding current pitch)
+    last_pitch_sp = float(getattr(plant, "pitch", 0.0))
     status_every_steps = max(1, int(1.0 / dt))  # ~1 Hz log
     print("Starting main loop ...")
     for k in range(steps):
@@ -217,6 +218,9 @@ def main() -> None:
         err_sp = depth_sp - depth_sp_cmd
         step_sp = np.clip(err_sp, -rate * dt, rate * dt)
         depth_sp_cmd += step_sp
+
+        # Ensure pitch_sp exists for logging even in INIT/STABILIZE
+        pitch_sp = last_pitch_sp
 
         # Controllers
         if mode in (Mode.HOLD_DEPTH, Mode.RETURN):
@@ -302,7 +306,7 @@ def main() -> None:
             yaw_sp_deg = float(np.rad2deg(yaw_sp))
             print(
                 f"t={t:6.2f}s  depth={state['depth']:+6.2f}m  depth_sp={depth_sp_cmd:+6.2f}m  "
-                f"yaw={yaw_deg:+6.1f}° sp={yaw_sp_deg:+6.1f}°  pitch={state['pitch']:+5.2f}rad  "
+                f"yaw={yaw_deg:+6.1f}° yaw_sp={yaw_sp_deg:+6.1f}°  pitch={state['pitch']:+5.2f}rad pitch_sp={pitch_sp:+5.2f}rad  "
                 f"speed={state['speed']:+5.2f}m/s  mode={mode.name}"
             )
 
