@@ -88,8 +88,8 @@ def main() -> None:
     mm = ModeManager(health, nav, params={"auto_surface_when_home": False})
     dogs = Watchdogs()
 
-    # Setpoints
-    depth_sp = cfg["setpoints"]["depth_m"]
+        # Setpoints
+    depth_sp = getattr(plant, "depth", cfg["setpoints"]["depth_m"])
     depth_sp_cmd = depth_sp  # smoothed/rate-limited setpoint actually fed to controller
     # Default: hold current yaw unless a scenario changes it (events/waypoints)
     yaw_sp = getattr(plant, "yaw", 0.0)
@@ -317,7 +317,7 @@ def main() -> None:
         yaw_hist.append(state["yaw"])  # true yaw
         yaw_target_hist.append(yaw_sp)
         pitch_hist.append(state["pitch"])  # true pitch
-        pitch_target_hist.append(0.0)
+        pitch_target_hist.append(pitch_sp)
         rudder_hist.append(r)
         stern_hist.append(s)
         thrust_hist.append(tcmd)
